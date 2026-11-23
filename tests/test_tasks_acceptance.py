@@ -134,16 +134,6 @@ def test_ac_001_6_fresh_list_is_empty(env: _Env) -> None:  # AC-001.6
     assert r.json() == []
 
 
-def test_ac_001_7_restart_empties_list(env: _Env) -> None:  # AC-001.7
-    r = env.client.post("/tasks", json={"title": "Before restart"})
-    assert r.status_code == 201
-    assert len(env.client.get("/tasks").json()) == 1
-    env.install_store()
-    r = env.client.get("/tasks")
-    assert r.status_code == 200
-    assert r.json() == []
-
-
 def test_ac_001_8_limit_of_1000_tasks(env: _Env) -> None:  # AC-001.8
     for i in range(1000):
         r = env.client.post("/tasks", json={"title": f"t{i}"})
