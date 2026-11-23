@@ -5,8 +5,8 @@ spec_hash: 35a8e3a6e42f
 summary: Tasks stored in Postgres via psycopg 3 (connection per call, self-applied schema), 503 and a database-aware /ready during outages
 tasks:
   - id: t1
-    title: Add the db module (conninfo, timeouts, migrations, readiness) and the Postgres test fixtures
-    files: [src/taskboard28_api/db.py, pyproject.toml, uv.lock, tests/conftest.py, docs/env-vars.md]
+    title: Add the db module (conninfo, timeouts, migrations, readiness)
+    files: [src/taskboard28_api/db.py, docs/env-vars.md]
     covers: [AC-002.1, AC-002.7, AC-002.8]
     parallel_safe: true
     depends_on: []
@@ -22,25 +22,29 @@ tasks:
     covers: [AC-002.1, AC-002.7, AC-002.8]
     parallel_safe: true
     depends_on: [t1]
+  - id: t4
+    title: Map 422 validation errors to the contract's title-required, title-min and title-max types
+    files: [src/taskboard28_api/tasks/schemas.py, src/taskboard28_api/tasks/api.py, src/taskboard28_api/main.py]
+    covers: []
+    parallel_safe: false
+    depends_on: [t3]
 ---
 
 # Plan — 002 Keep tasks in Postgres so they survive restarts
 
 See [design.md](design.md) for the decisions, signatures, schema, contract and the test fixtures. No gitops task: the system plan wires `uses: postgres` (`DATABASE_URL`, `PG*`) for this component.
 
-## t1 — Add the db module (conninfo, timeouts, migrations, readiness) and the Postgres test fixtures
+## t1 — Add the db module (conninfo, timeouts, migrations, readiness)
 
-**Files:** src/taskboard28_api/db.py, pyproject.toml, uv.lock, tests/conftest.py, docs/env-vars.md
+**Files:** src/taskboard28_api/db.py, docs/env-vars.md
 **Covers:** AC-002.1, AC-002.7, AC-002.8
-**Goal:** one module owns every database connection with the spec's timeouts and error mapping and applies the schema itself; the test suite gets a real Postgres.
+**Goal:** one module owns every database connection with the spec's timeouts and error mapping and applies the schema itself. The Postgres test fixtures (`tests/conftest.py`) and the `psycopg` / `testcontainers` dependencies (`pyproject.toml`, `uv.lock`) are delivered by the red-tests step, not by this task.
 
 **Implementation notes:**
-- `pyproject.toml`: add `psycopg[binary]>=3.2` to `dependencies` and `testcontainers[postgres]>=4.8` to the `dev` extra; refresh `uv.lock` through `devbox shell` (its init hook runs `uv sync --all-extras`), never `uv add`.
 - `db.py`: `TaskStoreUnavailableError`, `conninfo()` (reads `DATABASE_URL` on each call, `""` falls back to libpq `PG*`), `connect()` context manager with `connect_timeout=3`, `options="-c statement_timeout=5000 -c TimeZone=UTC"`, `application_name="taskboard28-api"`; maps `psycopg.OperationalError` / `InterfaceError` to `TaskStoreUnavailableError` and logs `task_store_unavailable` (class name only, never the DSN).
 - `db.py`: `MIGRATIONS = [(1, <CREATE TABLE tasks ...>)]` exactly as in design "Data"; `ensure_schema()` creates `schema_migrations` if missing and applies pending versions in one transaction under `pg_advisory_xact_lock(SCHEMA_LOCK_KEY)`, sets `_schema_ready`, logs `db_schema_applied`; `connect()` applies them first while `_schema_ready` is false.
 - `db.py`: `check_ready() -> bool` with `connect_timeout=2`, `statement_timeout_ms=2000`, `SELECT 1`; never raises.
 - SQL only as module constants with `%s` parameters (bandit).
-- `tests/conftest.py`: keep `client`; add `postgres_dsn` (session; `TEST_DATABASE_URL` or a `postgres:16-alpine` `PostgresContainer`, started lazily; sets `os.environ["DATABASE_URL"]` for the session), autouse `_tasks_db` (skips tests marked `smoke`; else `db.ensure_schema()` + `TRUNCATE tasks`), `seed_tasks(n)` (one `INSERT ... SELECT ... FROM generate_series`, `uuid4`-like ids via `gen_random_uuid()`, `created_at` increasing, titles `seed-<i>`), `empty_database` (drops `tasks` and `schema_migrations`), all as in design.
 - `docs/env-vars.md`: a "Database" section for `DATABASE_URL` and the `PG*` fallback, with the timeouts.
 
 **Done when:** the existing suite passes against the test Postgres (`test_health`, `test_contract`, spec 001 tests on the still in-memory store), `db.ensure_schema()` on an empty database creates both tables, and `devbox run ci` is green.
@@ -73,3 +77,15 @@ See [design.md](design.md) for the decisions, signatures, schema, contract and t
 - `main.py`: `/ready` returns `200 {"status": "ready"}` when `db.check_ready()` is true, else `JSONResponse(503, {"detail": "task store unavailable"})`; `/health`, `/ping`, `/metrics` unchanged.
 
 **Done when:** the acceptance tests for AC-002.1, AC-002.7 and AC-002.8 pass once t2 is merged too, `test_health` passes against the test database, and `devbox run ci` is green.
+
+## t4 — Map 422 validation errors to the contract's title types
+
+**Files:** src/taskboard28_api/tasks/schemas.py, src/taskboard28_api/tasks/api.py, src/taskboard28_api/main.py
+**Covers:** none (the shared contract of the system plan, `contract/001-tasks-in-postgres-visible-and-creatable.json`)
+**Goal:** `422` bodies carry `type` `title-required`, `title-min` and `title-max` for a missing, empty and over-long `title`, as `tests/test_contract.py` expects (today FastAPI answers `missing`, `string_too_short`, `string_too_long`).
+
+**Implementation notes:**
+- Map the pydantic error types of `title` to the contract types in `schemas`/`api` (a `RequestValidationError` handler or custom validator messages); keep the rest of the `422` body of spec 001.
+- Validation still runs before the handler, so it also answers `422` during an outage.
+
+**Done when:** `tests/test_contract.py` passes and `devbox run ci` is green.
