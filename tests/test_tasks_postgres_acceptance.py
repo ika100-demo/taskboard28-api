@@ -30,6 +30,11 @@ def test_ac_002_1_empty_database_starts_and_accepts_tasks(
         r = client.post("/tasks", json={"title": "Buy milk"})
         assert r.status_code == 201
         assert r.json()["title"] == "Buy milk"
+    from taskboard28_api.tasks import TaskStore
+
+    assert [t.title for t in TaskStore().list()] == ["Buy milk"]
+    with TestClient(app) as client:
+        assert [t["title"] for t in client.get("/tasks").json()] == ["Buy milk"]
 
 
 def test_ac_002_2_tasks_survive_restart() -> None:  # AC-002.2
