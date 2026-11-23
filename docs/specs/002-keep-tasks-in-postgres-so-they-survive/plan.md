@@ -17,12 +17,14 @@ tasks:
     covers: [AC-002.2, AC-002.3, AC-002.4, AC-002.5, AC-002.6, AC-002.7]
     parallel_safe: true
     depends_on: [t1]
+    done: true
   - id: t3
     title: Answer 503 on store outages, apply the schema at startup, make /ready check the database
     files: [src/taskboard28_api/tasks/api.py, src/taskboard28_api/main.py]
     covers: [AC-002.1, AC-002.7, AC-002.8]
     parallel_safe: true
     depends_on: [t1]
+    done: true
   - id: t4
     title: Map 422 validation errors to the contract's title-required, title-min and title-max types
     files: [src/taskboard28_api/tasks/schemas.py, src/taskboard28_api/tasks/api.py, src/taskboard28_api/main.py]
