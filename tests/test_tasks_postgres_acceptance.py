@@ -148,6 +148,42 @@ def test_ac_002_7_database_not_answering_is_503(postgres_dsn: str) -> None:  # A
         assert client.get("/tasks").json() == []
 
 
+def test_ac_002_7_silent_database_is_503_within_5_seconds(
+    monkeypatch: pytest.MonkeyPatch, postgres_dsn: str
+) -> None:  # AC-002.7
+    import socket
+    import time
+
+    limit = 5.5  # criterion: 5 seconds, plus a small margin
+    with TestClient(app) as client, socket.socket() as silent:
+        # Accepts connections (kernel backlog) but never replies.
+        silent.bind(("127.0.0.1", 0))
+        silent.listen(16)
+        port = silent.getsockname()[1]
+        monkeypatch.setenv("DATABASE_URL", f"postgresql://u:p@127.0.0.1:{port}/x")
+
+        started = time.monotonic()
+        g = client.get("/tasks")
+        assert time.monotonic() - started <= limit
+        assert g.status_code == 503
+        assert g.json() == UNAVAILABLE
+
+        started = time.monotonic()
+        p = client.post("/tasks", json={"title": "lost"})
+        assert time.monotonic() - started <= limit
+        assert p.status_code == 503
+        assert p.json() == UNAVAILABLE
+
+        started = time.monotonic()
+        ready = client.get("/ready")
+        assert time.monotonic() - started <= limit
+        assert ready.status_code == 503
+        assert client.get("/health").status_code == 200
+
+        monkeypatch.setenv("DATABASE_URL", postgres_dsn)
+        assert client.get("/tasks").json() == []
+
+
 def test_ac_002_8_recovers_after_outage_without_restart(
     monkeypatch: pytest.MonkeyPatch, postgres_dsn: str
 ) -> None:  # AC-002.8
