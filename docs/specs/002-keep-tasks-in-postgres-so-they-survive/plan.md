@@ -10,6 +10,7 @@ tasks:
     covers: [AC-002.1, AC-002.7, AC-002.8]
     parallel_safe: true
     depends_on: []
+    done: true
   - id: t2
     title: Back TaskStore with Postgres
     files: [src/taskboard28_api/tasks/store.py, tests/test_task_store.py]
