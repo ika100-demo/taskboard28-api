@@ -1,7 +1,7 @@
 ---
 spec_id: 001-create-and-list-tasks-in-memory
 title: Create and list tasks in memory
-status: approved
+status: done
 priority: P1
 shape: service-python
 ---
@@ -62,3 +62,5 @@ As a taskboard28 client, I want to list all tasks, so that I can see what has be
 - 2026-11-23 priority P1 proposed: P1: normal bug or feature
 - 2026-11-23 amended: open question on access answered (no authentication for now, A10); access control made a non-goal
 - 2026-11-23 approved
+- 2026-11-23 building
+- 2026-11-23 done
