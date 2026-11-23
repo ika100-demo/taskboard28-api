@@ -17,6 +17,7 @@ tasks:
     covers: [AC-001.1, AC-001.2, AC-001.3, AC-001.4, AC-001.5, AC-001.6, AC-001.7, AC-001.8]
     parallel_safe: false
     depends_on: [t1]
+    done: true
 human_steps:
   - Confirm the taskboard28-api entry in ika100-demo/taskboard28-gitops system.yaml runs a single replica (replicas 1), because tasks are held per process (spec A9)
 ---
