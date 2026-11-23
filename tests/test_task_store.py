@@ -1,13 +1,15 @@
-"""Unit tests for task schemas and the in-memory store."""
+"""Unit tests for task schemas and the Postgres-backed store."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, date
 from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
+from taskboard28_api.db import TaskStoreUnavailableError
 from taskboard28_api.tasks import MAX_TASKS, TaskCreate, TaskLimitReachedError, TaskStore
 
 
@@ -23,6 +25,29 @@ def test_add_and_order() -> None:
     assert a.due_date is None
     assert b.due_date == date(2026, 12, 24)
     assert a.created_at.tzinfo is UTC
+
+
+def test_fresh_store_sees_earlier_tasks() -> None:
+    a = TaskStore().add(TaskCreate(title="a"))
+    assert TaskStore().list() == [a]
+
+
+def test_limit_with_seeded_tasks(seed_tasks: Callable[[int], None]) -> None:
+    seed_tasks(MAX_TASKS)
+    store = TaskStore()
+    with pytest.raises(TaskLimitReachedError):
+        store.add(TaskCreate(title="x"))
+    assert len(store.list()) == MAX_TASKS
+
+
+def test_unreachable_database_raises_and_stores_nothing(
+    monkeypatch: pytest.MonkeyPatch, postgres_dsn: str
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@127.0.0.1:1/x")
+    with pytest.raises(TaskStoreUnavailableError):
+        TaskStore().add(TaskCreate(title="a"))
+    monkeypatch.setenv("DATABASE_URL", postgres_dsn)
+    assert TaskStore().list() == []
 
 
 def test_list_returns_copy() -> None:
