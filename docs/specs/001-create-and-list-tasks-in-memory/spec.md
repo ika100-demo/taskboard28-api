@@ -25,8 +25,8 @@ As a taskboard28 client, I want to list all tasks, so that I can see what has be
 - **AC-001.3** Given a running service, when a client sends `POST /tasks` with a missing `title`, a `title` that is not a string, a `title` that is empty or only whitespace after trimming, or a `title` longer than 200 characters after trimming, then the response is `422` with an error naming the `title` field, and no task is created.
 - **AC-001.4** Given a running service, when a client sends `POST /tasks` with a `due_date` that is not a calendar date in `YYYY-MM-DD` form (such as `"24.12.2026"`, `"2026-02-30"` or `"2026-12-24T10:00:00Z"`), then the response is `422` with an error naming the `due_date` field, and no task is created.
 - **AC-001.5** Given tasks "A", "B" and "C" created in that order, when a client sends `GET /tasks`, then the response is `200` with a JSON array of the three tasks in creation order, each with `id`, `title`, `due_date` and `created_at` as returned on creation. (smoke)
-- **AC-001.6** Given no task has been created since the service started, when a client sends `GET /tasks`, then the response is `200` with an empty JSON array `[]`.
-- **AC-001.7** Given tasks created before the service restarts, when a client sends `GET /tasks` after the restart, then the response is `200` with an empty JSON array, because tasks are kept in memory only.
+- ~~**AC-001.6**~~ superseded by AC-002.4 on 2026-11-23: Given no task has been created since the service started, when a client sends `GET /tasks`, then the response is `200` with an empty JSON array `[]`.
+- ~~**AC-001.7**~~ superseded by AC-002.2 on 2026-11-23: Given tasks created before the service restarts, when a client sends `GET /tasks` after the restart, then the response is `200` with an empty JSON array, because tasks are kept in memory only.
 - **AC-001.8** Given 1000 tasks already exist, when a client sends `POST /tasks` with a valid body, then the response is `409` with an error saying the task limit of 1000 is reached, and `GET /tasks` still returns exactly 1000 tasks.
 
 ## Non-goals
@@ -64,3 +64,5 @@ As a taskboard28 client, I want to list all tasks, so that I can see what has be
 - 2026-11-23 approved
 - 2026-11-23 building
 - 2026-11-23 done
+- 2026-11-23 AC-001.7 superseded by AC-002.2
+- 2026-11-23 AC-001.6 superseded by AC-002.4
