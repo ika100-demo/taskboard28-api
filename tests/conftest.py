@@ -12,6 +12,21 @@ from fastapi.testclient import TestClient
 
 from taskboard28_api.main import app
 
+_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version    integer PRIMARY KEY,
+    applied_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS tasks (
+    seq        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id         uuid NOT NULL UNIQUE,
+    title      text NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    due_date   date NULL,
+    created_at timestamptz NOT NULL
+);
+INSERT INTO schema_migrations (version) VALUES (1) ON CONFLICT DO NOTHING;
+"""
+
 
 @pytest.fixture()
 def client() -> TestClient:
@@ -58,9 +73,10 @@ def _tasks_db(request: pytest.FixtureRequest) -> None:
     if db is not None:
         db.ensure_schema()
     with psycopg.connect(dsn, autocommit=True) as conn:
-        exists = conn.execute("SELECT to_regclass('tasks')").fetchone()
-        if exists and exists[0] is not None:
-            conn.execute("TRUNCATE tasks")
+        if db is None:
+            # Until db.py exists: apply the design's "Data" SQL directly.
+            conn.execute(_SCHEMA_SQL)
+        conn.execute("TRUNCATE tasks")
 
 
 @pytest.fixture()
