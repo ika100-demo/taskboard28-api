@@ -31,6 +31,7 @@ tasks:
     covers: []
     parallel_safe: false
     depends_on: [t3]
+    done: true
 ---
 
 # Plan — 002 Keep tasks in Postgres so they survive restarts
