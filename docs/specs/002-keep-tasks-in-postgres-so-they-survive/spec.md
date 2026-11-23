@@ -1,7 +1,7 @@
 ---
 spec_id: 002-keep-tasks-in-postgres-so-they-survive
 title: Keep tasks in Postgres so they survive restarts
-status: approved
+status: building
 priority: P1
 shape: service-python
 parent: ika100-demo/taskboard28-gitops:001-tasks-in-postgres-visible-and-creatable
@@ -184,3 +184,4 @@ repo's spec 001 (system A2); only storage changes. Tests run against a real Post
 
 - 2026-11-23 created from the system plan, with its criteria (spec 147)
 - 2026-11-23 approved
+- 2026-11-23 building
